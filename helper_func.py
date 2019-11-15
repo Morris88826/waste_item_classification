@@ -1,9 +1,12 @@
 import torch
 import numpy as np
 import PIL
+import matplotlib.pyplot as plt
 from PIL import Image
 from typing import Tuple
 from matplotlib.pyplot import imshow
+from sklearn.metrics import confusion_matrix
+from sklearn.utils.multiclass import unique_labels
 
 def load_image(path: str) -> np.ndarray:
   """
@@ -74,6 +77,12 @@ def PIL_resize(img: np.ndarray, ratio:Tuple[float, float]) -> np.ndarray:
   img = PIL_image_to_numpy_arr(img)
   return img
 
+def PIL_resize_ws(img: np.ndarray, ws: int) -> np.ndarray:
+  img = numpy_arr_to_PIL_image(img, scale_to_255=True)
+  img = img.resize((ws, ws), Image.ANTIALIAS)
+  img = PIL_image_to_numpy_arr(img)
+  return img
+
 def show_image(img: np.ndarray) -> PIL.Image:
   """
   Args: 
@@ -83,3 +92,50 @@ def show_image(img: np.ndarray) -> PIL.Image:
   i_img *= 255
   PIL.Image.fromarray(np.uint8(i_img)).show()
   return
+
+
+def generate_confusion_matrix(ground_truth, predicts, labels, cmap= plt.cm.get_cmap('Blues'), normalize=False):
+  """
+  Args: 
+  - ground_truth: The true labels of the image set, shape=(N,1)
+  - predicts: The predict labels of the image set, shape=(N,1)
+  - labels: The label of your classes
+  - cmap: Color map
+  - normalize: Normalize the confusion matrix
+
+  Returns:
+  - ax
+  """
+  cm = confusion_matrix(ground_truth, predicts)
+
+  if normalize:
+      cm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
+      print("Normalized confusion matrix")
+  else:
+      print('Confusion matrix, without normalization')
+      
+  fig = plt.figure()
+  ax = fig.add_subplot(111)
+
+  im = ax.imshow(cm, interpolation='nearest', cmap=cmap)
+  ax.figure.colorbar(im, ax=ax)
+  # We want to show all ticks...
+  ax.set(# ... and label them with the respective list entries
+          xticklabels=([''] + labels), yticklabels=([''] + labels),
+          ylabel='True label',
+          xlabel='Predicted label')
+
+  # Rotate the tick labels and set their alignment.
+  plt.setp(ax.get_xticklabels(), rotation=45, ha="right",
+            rotation_mode="anchor")
+
+  # Loop over data dimensions and create text annotations.
+  fmt = '.2f' if normalize else 'd'
+  thresh = cm.max() / 2.
+  for i in range(cm.shape[0]):
+      for j in range(cm.shape[1]):
+          ax.text(j, i, format(cm[i, j], fmt),
+                  ha="center", va="center",
+                  color="white" if cm[i, j] > thresh else "black")
+  fig.tight_layout()
+  return ax
